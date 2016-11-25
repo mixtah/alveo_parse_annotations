@@ -1,2 +1,2 @@
-# alveo_parse_annotations
-Parses annotations from the austalk collection and 
+# Alveo Parse Annotations
+Parses annotations from the Austalk collection and processes it so it can be uploaded to Alveo.
