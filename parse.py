@@ -11,6 +11,34 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 SRC = "C:\\Users\\Michael\\Desktop\\annotations-organised"
 SPACE = "  "
 
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
+def display_repeat_files(outfile=None,printdirs=True):
+    files = {}
+    for dirpath, dirnames, filenames in os.walk(SRC):
+        for file in filenames:
+            hash = md5(os.path.join(dirpath,file))
+            try:
+                files[hash][0] = files[hash][0]+1
+                files[hash][1].append(os.path.join(dirpath[len(SRC):],file))
+            except KeyError:
+                files[hash] = [1,[os.path.join(dirpath[len(SRC):],file)]]
+        print 'scanned:\t',dirpath
+    for i in files:
+        if files[i][0]>1:
+            s = "%s : %d" % (i,files[i][0])
+            if printdirs:
+                s = s+'\n\t'+'\n\t'.join(files[i][1])
+            print s
+            if not file==None:
+                outfile.write(s+'\n')
+    
 
 def print_folder_info(dirpath="",extns = {},src=SRC,file=None):
     depth = len(dirpath[len(src):].split(os.path.sep))-1
@@ -74,5 +102,9 @@ if __name__ == '__main__':
         #Function 2: get folder and file info
         with open(os.path.join(CWD,"output.txt"),'w') as file: 
             display_file_ext_info(outfile=file)
+    elif funct==3:
+        #Function 3: find all repeat files, display their directories and how unique they are.
+        with open(os.path.join(CWD,"output.txt"),'w') as file: 
+            display_repeat_files(outfile=file)
     
     
