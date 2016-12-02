@@ -6,6 +6,7 @@ Created on 1 Dec 2016
 
 import os,sys,json,csv
 import hashlib
+from openpyxl import Workbook,load_workbook
 from scan import scan_files, parse_args, log
 
 def md5(fname):
@@ -16,6 +17,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 data = {}
+xlsx = {}
 #columns = ['1_2','1_3','1_4','2_7','2_16','2_22','3_8','3_32','4_10','4_32']
 columns = ['speaker']
 
@@ -28,39 +30,82 @@ def on_file(**kw):
     global columns
     try:
         file,ext = kw['file'].split('.')
-        comps = file.split('_')
-        speaker = comps[0]+'_'+comps[1]
-        session = comps[2]+'_'+comps[3]
-        item = comps[4][:3] #This may have -ch6-speaker or -n-n-n behind it
     except:
-        #Not an interesting file skip
+        #odd file, ignore
+        log("Odd File: "+os.path.join(kw['dirpath'],kw['file']),kw['outfile'])
         return
-    
-    #Initialize anything that needs it
-    if not speaker in data:
-        data[speaker] = {}
-    
-    if not session in data[speaker]:
-        data[speaker][session]={}
-    
-    #For duplicate files
-    if not item in data[speaker][session]:
-        data[speaker][session][item]={}
-    
-    #Add in the file data
-    path = os.path.join(kw['dirpath'],kw['file'])
-    hash = md5(path)
-    
-    
-    if not hash in data[speaker][session][item]:
-        data[speaker][session][item][hash] = []
-    
-    data[speaker][session][item][hash].append(path)
-    
-    col_name = "%s %s" % (session,ext)
-    
-    if not col_name in columns:
-        columns.append(col_name)
+    if ext=='xlsx':
+        #We have an excel file. We should collect the data.
+        try:
+            comps = file.split('_')
+            speaker = comps[1]+'_'+comps[2]
+            if not comps[0]=='MAUS':
+                #Not interesting excel file, skip
+                return
+            
+        except:
+            #Not an interesting excel file, skip
+            return
+        
+        if not speaker in xlsx:
+            xlsx[speaker] = {}
+        try:
+            wb = load_workbook(os.path.join(kw['dirpath'],kw['file']))
+        except:
+            #odd file, ignore
+            log("Couldn't load Excel File: "+os.path.join(kw['dirpath'],kw['file']),kw['outfile'])
+            return
+        ws = wb.active
+        
+        #They all use rows 2 to 60 (inclusive)
+        for row in range(2,61):
+            #Get numbers from Col A as keys
+            key = ws['A%d'%row].value
+            #If something in Col C then value is true, false otherwise
+            val = 'false'
+            if len(str(ws['C%d'%row].value))>0:
+                val = 'true'
+            
+            xlsx[speaker][key] = val
+            
+        log('Processed Excel File: '+kw['file'],kw['outfile'])
+        
+    else:
+        try:
+            comps = file.split('_')
+            speaker = comps[0]+'_'+comps[1]
+            session = comps[2]+'_'+comps[3]
+            item = comps[4][:3] #This may have -ch6-speaker or -n-n-n behind it
+        except:
+            #Not the file we were looking for
+            #move along, move along
+            return
+        
+        #Initialize anything that needs it
+        if not speaker in data:
+            data[speaker] = {}
+        
+        if not session in data[speaker]:
+            data[speaker][session]={}
+        
+        #For duplicate files
+        if not item in data[speaker][session]:
+            data[speaker][session][item]={}
+        
+        #Add in the file data
+        path = os.path.join(kw['dirpath'],kw['file'])
+        hash = md5(path)
+        
+        
+        if not hash in data[speaker][session][item]:
+            data[speaker][session][item][hash] = []
+        
+        data[speaker][session][item][hash].append(path)
+        
+        col_name = "%s %s" % (session,ext)
+        
+        if not col_name in columns:
+            columns.append(col_name)
 
 def on_finish(**kw):
     ''' output all data '''
@@ -71,6 +116,9 @@ def on_finish(**kw):
     #generate output
     with open(kw['output_file']+'.json','w') as file:
         file.write(json.dumps(data))
+        
+    with open(kw['output_file']+'_excel.json','w') as file:
+        file.write(json.dumps(xlsx))
         
     log("Finished Generating json output",kw['outfile'])
     
