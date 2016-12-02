@@ -4,6 +4,7 @@ Created on 28 Nov 2016
 @author: Michael
 '''
 import os
+import shutil
 
 def log(text,file=None):
     print text
@@ -22,6 +23,34 @@ def delete_file_of_type(**kw):
         path = os.path.join(kw['dirpath'],kw['file'])
         os.remove(path)
         log("Deleted: %s" % (path),kw['outfile'])
+        
+def move_to_new_struct(**kw):
+    ''' Move files with .trs and .TextGrid etxns into new folder 
+        structure Requires 'dest' field '''
+    try:
+        file,ext = kw['file'].split('.')
+    except:
+        #odd file, ignore
+        log("Odd File: "+os.path.join(kw['dirpath'],kw['file']),kw['outfile'])
+        return
+    
+    extns = ['trs','TextGrid']
+    
+    if not os.path.exists(kw['dest']):
+        os.makedirs(kw['dest'])
+        log("Created Directory: %s"%kw['dest'], kw['outfile'])
+    
+    for e in extns:
+        dir = os.path.join(kw['dest'],e)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+            log("Created Directory: %s"%dir, kw['outfile'])
+    
+    if ext in extns:
+        src = os.path.join(kw['dirpath'],kw['file'])
+        dst = os.path.join(kw['dest'],ext,kw['file'])
+        shutil.copy(src, dst)
+    
         
 def convert_file_prefix_if_new(**kw):
     ''' Some files have a silly prefix and are supposedly newer, 
