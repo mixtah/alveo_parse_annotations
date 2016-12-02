@@ -57,8 +57,10 @@ def on_file(**kw):
     
     data[speaker][session][item][hash].append(path)
     
-    if not session in columns:
-        columns.append(session)
+    col_name = "%s %s" % (session,ext)
+    
+    if not col_name in columns:
+        columns.append(col_name)
 
 def on_finish(**kw):
     ''' output all data '''
@@ -77,8 +79,20 @@ def on_finish(**kw):
     for speaker in data:
         tmp = {'speaker':speaker}
         for session in data[speaker]:
-            tmp[session] = len(data[speaker][session])
+            for item in data[speaker][session]:
+                ext_list = []
+                for hash in data[speaker][session][item]:
+                    ext = data[speaker][session][item][hash][0].split('.')[-1]
+                    #prevent updated or older files for the same speaker/session form being counted
+                    if not ext in ext_list:
+                        ext_list.append(ext)
+                        col_name = "%s %s" % (session,ext)
+                        if not col_name in tmp:
+                            tmp[col_name] = 0
+                        tmp[col_name] += 1
         csv_rows.append(tmp)
+    
+    
     
     with open(kw['output_file']+'.csv','w') as file:
         dict_writer = csv.DictWriter(file,lineterminator='\n',fieldnames=columns)
@@ -93,3 +107,4 @@ if __name__ == '__main__':
     with open(output_file+'.log','w') as file:
         print "Starting Scan"
         scan_files(vars['root'], outfile=file, function=on_file,on_finish=on_finish,pre_dir=pre_dir,output_file=output_file)
+        
